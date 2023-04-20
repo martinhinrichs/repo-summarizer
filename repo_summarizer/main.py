@@ -50,14 +50,18 @@ def summarize_repository(path: str) -> Dict[str, str]:
     tracked_files_output = subprocess.check_output(["git", "ls-files"], cwd=path, universal_newlines=True)
     tracked_files = set(tracked_files_output.strip().splitlines())
 
-    for file in tracked_files.copy():
-        if file.endswith("poetry.lock"):
-            tracked_files.remove(file)
+    if os.path.exists(os.path.join(path, "repo-summarizer.json")):
+        with open(os.path.join(path, "repo-summarizer.json"), "r") as f:
+            config = json.load(f)
+        for file in config.get("exclude", []):
+            if file in tracked_files:
+                tracked_files.remove(file)
 
     with ThreadPoolExecutor(max_workers=20) as executor:
         file_summaries = list(executor.map(summarize, tracked_files))
 
     return OrderedDict(sorted(zip(tracked_files, file_summaries)))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Summarize the content of a git repository")
