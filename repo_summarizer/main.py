@@ -51,9 +51,28 @@ Only use more than one sentence if the code seems to play a central role in the 
 
 What the code in {filepath} will achieve is to"""
 
+    refine_prompt_template = f"""
+You are the world's best code summarizer. Your summaries are extremely concise, clear and correct.
+We are creating an overview of a repository, with a short description of each file. You have already summarized 
+the first part of the code in {filepath} as follows:
+
+{{existing_answer}}
+
+After the already summarized part, the code continues:
+```
+{{text}}
+```
+If necessary, adapt the summary to include the new code.
+Use a single short sentence, unless the sentence would be very long (then you may split it up to make it more readable).
+Only use more than one sentence if the code seems to play a central role in the overall application.
+
+What the code in {filepath} will achieve is to"""
+
     prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
 
-    chain = load_summarize_chain(llm, chain_type="refine", verbose=True, question_prompt=prompt)
+    refine_prompt = PromptTemplate(template=refine_prompt_template, input_variables=["existing_answer", "text"])
+
+    chain = load_summarize_chain(llm, chain_type="refine", verbose=True, question_prompt=prompt, refine_prompt=refine_prompt)
 
     summary = chain.run(docs)
     summary = summary[0].upper() + summary[1:]
