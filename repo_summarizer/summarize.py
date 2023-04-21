@@ -1,3 +1,5 @@
+import os
+
 from langchain import PromptTemplate
 from langchain.chains.summarize import load_summarize_chain
 from langchain.chat_models import ChatOpenAI
@@ -6,10 +8,10 @@ from langchain.text_splitter import PythonCodeTextSplitter
 from repo_summarizer.tokens import count_tokens
 
 
-def summarize(filepath: str) -> str:
+def summarize(filepath: str, base_path: str) -> str:
     """Summarize a single file."""
 
-    with open(filepath, "r") as f:
+    with open(os.path.join(base_path, filepath), "r") as f:
         try:
             text = f.read()
         except UnicodeDecodeError:

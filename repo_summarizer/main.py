@@ -21,7 +21,7 @@ def main(path):
     if os.path.isdir(path):
         print(json.dumps(summarize_repository(path), indent=4))
     elif os.path.isfile(path):
-        print(summarize(path))
+        print(summarize(path, ""))
 
 
 def summarize_repository(path: str) -> Dict[str, str]:
@@ -32,8 +32,10 @@ def summarize_repository(path: str) -> Dict[str, str]:
     tracked_files = list_files(path)
     calculate_cost_and_confirm(tracked_files, path)
 
+    summarize_with_basepath = lambda file: summarize(file, path)
+
     with ThreadPoolExecutor(max_workers=20) as executor:
-        file_summaries = list(executor.map(summarize, tracked_files))
+        file_summaries = list(executor.map(summarize_with_basepath, tracked_files))
 
     return OrderedDict(sorted(zip(tracked_files, file_summaries)))
 
