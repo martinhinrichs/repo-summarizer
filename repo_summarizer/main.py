@@ -1,17 +1,25 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import json
+import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict
 from collections import OrderedDict
-
-from dotenv import load_dotenv
+import click
 
 from repo_summarizer.summarize import summarize
 
-load_dotenv()
 
-import argparse
-import os
+@click.command()
+@click.argument('path', type=click.Path(exists=True))
+def main(path):
+    if os.path.isdir(path):
+        print(json.dumps(summarize_repository(path), indent=4))
+    elif os.path.isfile(path):
+        print(summarize(path))
 
 
 def summarize_repository(path: str) -> Dict[str, str]:
@@ -35,15 +43,4 @@ def summarize_repository(path: str) -> Dict[str, str]:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Summarize the content of a git repository")
-    parser.add_argument("path", help="Path to the repository or file to summarize")
-    args = parser.parse_args()
-
-    path = args.path
-    if os.path.exists(path):
-        if os.path.isdir(path):
-            print(json.dumps(summarize_repository(path), indent=4))
-        elif os.path.isfile(path):
-            print(summarize(path))
-    else:
-        print(f"Error: The path '{path}' does not exist.")
+    main()
