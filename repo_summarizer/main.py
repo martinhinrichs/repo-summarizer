@@ -24,6 +24,20 @@ def main(path):
         print(summarize(path))
 
 
+def summarize_repository(path: str) -> Dict[str, str]:
+    """Summarize all files in a repository."""
+    if not os.path.exists(os.path.join(path, ".git")):
+        raise ValueError("The path is not a git repository.")
+
+    tracked_files = list_files(path)
+    calculate_cost_and_confirm(tracked_files, path)
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        file_summaries = list(executor.map(summarize, tracked_files))
+
+    return OrderedDict(sorted(zip(tracked_files, file_summaries)))
+
+
 def calculate_cost_and_confirm(tracked_files: Set[str], repo_path: str) -> None:
     """Ask for confirmation if the cost of summarizing the repository is above the limit."""
     tracked_files_full_path = [os.path.join(repo_path, file) for file in tracked_files]
@@ -46,20 +60,6 @@ def calculate_cost_and_confirm(tracked_files: Set[str], repo_path: str) -> None:
         if click.confirm(
                 f"Warning: The cost of summarizing this repository is {cost} USD ({price} USD/1k tokens). Do you want to continue?") is False:
             raise click.Abort()
-
-
-def summarize_repository(path: str) -> Dict[str, str]:
-    """Summarize all files in a repository."""
-    if not os.path.exists(os.path.join(path, ".git")):
-        raise ValueError("The path is not a git repository.")
-
-    tracked_files = list_files(path)
-    calculate_cost_and_confirm(tracked_files, path)
-
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        file_summaries = list(executor.map(summarize, tracked_files))
-
-    return OrderedDict(sorted(zip(tracked_files, file_summaries)))
 
 
 if __name__ == "__main__":
