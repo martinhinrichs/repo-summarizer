@@ -35,7 +35,12 @@ def summarize_repository(path: str) -> OrderedDict[str, str]:
     if not os.path.exists(os.path.join(path, ".git")):
         raise ValueError("The path is not a git repository.")
 
-    tracked_files = list_files(path)
+    if os.path.exists(os.path.join(path, "repo-summarizer.json")):
+        with open(os.path.join(path, "repo-summarizer.json"), "r") as f:
+            config = json.load(f)
+            exclude_patterns = set(config.get("exclude", []))
+
+    tracked_files = list_files(path, exclude_patterns)
     calculate_cost_and_confirm(tracked_files, path)
 
     summarize_with_basepath = lambda file: summarize(file, path)

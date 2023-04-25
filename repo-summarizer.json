@@ -1,7 +1,6 @@
 {
   "exclude": [
     ".env",
-    "package-lock.json",
     "poetry.lock"
   ]
 }
