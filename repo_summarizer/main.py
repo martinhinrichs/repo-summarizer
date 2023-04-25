@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 
+from repo_summarizer.output import format_as_tree
 from repo_summarizer.repository import list_files
 
 load_dotenv()
@@ -16,15 +17,20 @@ from repo_summarizer.tokens import count_tokens_in_file
 
 
 @click.command()
-@click.argument('path', type=click.Path(exists=True))
-def main(path):
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--format", type=click.Choice(["tree", "json"]), default="tree", help="Output format")
+def main(path, format):
     if os.path.isdir(path):
-        print(json.dumps(summarize_repository(path), indent=4))
+        summary = summarize_repository(path)
+        if format == "json":
+            print(json.dumps(summary, indent=4))
+        else:
+            print(format_as_tree(summary))
     elif os.path.isfile(path):
         print(summarize(path, ""))
 
 
-def summarize_repository(path: str) -> Dict[str, str]:
+def summarize_repository(path: str) -> OrderedDict[str, str]:
     """Summarize all files in a repository."""
     if not os.path.exists(os.path.join(path, ".git")):
         raise ValueError("The path is not a git repository.")
