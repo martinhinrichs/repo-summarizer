@@ -8,7 +8,7 @@ load_dotenv()
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Set
+from typing import Set
 from collections import OrderedDict
 import click
 
@@ -17,22 +17,19 @@ from repo_summarizer.tokens import count_tokens_in_file
 
 
 @click.command()
-@click.argument("path", type=click.Path(exists=True))
-@click.option("--format", type=click.Choice(["tree", "json"]), default="tree", help="Output format")
-def main(path, format):
+@click.argument("path", type=click.Path(exists=True), default=".")
+def main(path):
     if os.path.isdir(path):
         summary = summarize_repository(path)
-        if format == "json":
-            print(json.dumps(summary, indent=4))
-        else:
-            print(format_as_tree(summary))
-    elif os.path.isfile(path):
-        print(summarize(path, ""))
+        with open(os.path.join(path, "repo-summary.json"), "w") as f:
+            json.dump(summary, f, indent=4)
+        tree = format_as_tree(summary)
+        click.echo(tree)
 
 
 def summarize_repository(path: str) -> OrderedDict[str, str]:
     """Summarize all files in a repository."""
-    if not os.path.exists(os.path.join(path, ".git")):
+    if not os.path.isdir(path) or not os.path.exists(os.path.join(path, ".git")):
         raise ValueError("The path is not a git repository.")
 
     if os.path.exists(os.path.join(path, "repo-summarizer.json")):
@@ -62,16 +59,17 @@ def calculate_cost_and_confirm(tracked_files: Set[str], repo_path: str) -> None:
     limit = 0.0
 
     if cost > limit:
-        click.echo(f"Total tokens: {total_tokens}")
+        click.echo(f"Total tokens: {total_tokens}", err=True)
         files_by_size_desc = OrderedDict(sorted(tokens.items(), key=lambda x: x[1], reverse=True))
 
-        click.echo(f"Top 10 files by tokens:")
+        click.echo(f"Top 10 files by tokens:", err=True)
         for file, size in list(files_by_size_desc.items())[:10]:
-            click.echo(f"  {file}: {size}")
+            click.echo(f"  {file}: {size}", err=True)
 
-        click.echo()
+        click.echo(err=True)
         if click.confirm(
-                f"Warning: The cost of summarizing this repository is {cost} USD ({price} USD/1k tokens). Do you want to continue?") is False:
+                f"Warning: The cost of summarizing this repository is {cost} USD ({price} USD/1k tokens). Do you want to continue?",
+                err=True) is False:
             raise click.Abort()
 
 

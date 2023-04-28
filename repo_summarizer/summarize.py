@@ -58,7 +58,7 @@ What the code in {filepath} will achieve is to"""
 
     refine_prompt = PromptTemplate(template=refine_prompt_template, input_variables=["existing_answer", "text"])
 
-    chain = load_summarize_chain(llm, chain_type="refine", verbose=True, question_prompt=prompt, refine_prompt=refine_prompt)
+    chain = load_summarize_chain(llm, chain_type="refine", question_prompt=prompt, refine_prompt=refine_prompt)
 
     summary = chain.run(docs)
     summary = summary[0].upper() + summary[1:]
