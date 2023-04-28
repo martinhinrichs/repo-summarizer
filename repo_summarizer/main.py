@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 
+from repo_summarizer.models import File
 from repo_summarizer.output import format_as_tree
 from repo_summarizer.repository import list_files
 
@@ -8,7 +9,7 @@ load_dotenv()
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import Set
+from typing import Set, Dict
 from collections import OrderedDict
 import click
 
@@ -20,14 +21,16 @@ from repo_summarizer.tokens import count_tokens_in_file
 @click.argument("path", type=click.Path(exists=True), default=".")
 def main(path):
     if os.path.isdir(path):
-        summary = summarize_repository(path)
+        files = summarize_repository(path)
         with open(os.path.join(path, "repo-summary.json"), "w") as f:
-            json.dump(summary, f, indent=4)
-        tree = format_as_tree(summary)
+            serialized_files = {path: file_obj.dict() for path, file_obj in sorted(files.items())}
+            json.dump(serialized_files, f, indent=4)
+
+        tree = format_as_tree({file: files[file].summary for file in sorted(files.keys())})
         click.echo(tree)
 
 
-def summarize_repository(path: str) -> OrderedDict[str, str]:
+def summarize_repository(path: str) -> Dict[str, File]:
     """Summarize all files in a repository."""
     if not os.path.isdir(path) or not os.path.exists(os.path.join(path, ".git")):
         raise ValueError("The path is not a git repository.")
@@ -38,14 +41,34 @@ def summarize_repository(path: str) -> OrderedDict[str, str]:
             exclude_patterns = set(config.get("exclude", []))
 
     tracked_files = list_files(path, exclude_patterns)
-    calculate_cost_and_confirm(tracked_files, path)
+
+    files = {file: File(path=file, hash=tracked_files[file]) for file in tracked_files}
+
+    if os.path.exists(os.path.join(path, "repo-summary.json")):
+        with open(os.path.join(path, "repo-summary.json"), "r") as f:
+            json_str = f.read()
+        file_dicts = json.loads(json_str)
+        previous_summary = {path: File(**file_obj) for path, file_obj in file_dicts.items()}
+        for file in previous_summary:
+            files[file].summary = previous_summary[file].summary
+
+        files_to_summarize = {file: files[file] for file in files if
+                              file not in previous_summary or files[file].hash != previous_summary[file].hash}
+    else:
+        files_to_summarize = files
+    calculate_cost_and_confirm(set(files_to_summarize.keys()), path)
 
     summarize_with_basepath = lambda file: summarize(file, path)
 
     with ThreadPoolExecutor(max_workers=20) as executor:
-        file_summaries = list(executor.map(summarize_with_basepath, tracked_files))
+        file_summaries = list(executor.map(summarize_with_basepath, files_to_summarize))
 
-    return OrderedDict(sorted(zip(tracked_files, file_summaries)))
+    summarized = sorted(zip(files_to_summarize, file_summaries))
+
+    for file, summary in summarized:
+        files[file].summary = summary
+
+    return files
 
 
 def calculate_cost_and_confirm(tracked_files: Set[str], repo_path: str) -> None:

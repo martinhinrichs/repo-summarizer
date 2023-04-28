@@ -1,8 +1,7 @@
-from collections import OrderedDict
 from typing import Dict, List
 
 
-def format_as_tree(file_summaries: OrderedDict) -> str:
+def format_as_tree(file_summaries: Dict) -> str:
     def insert_into_tree(tree: Dict, parts: List[str], summary: str) -> None:
         if len(parts) == 1:
             tree[parts[0]] = summary
